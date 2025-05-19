@@ -153,7 +153,7 @@ async def start_playback(ctx, channel):
         )
         embed.add_field(name="Duration", value=duration_str, inline=True)
         if thumbnail:
-            embed.set_thumbnail(url=thumbnail)
+            embed.set_image(url=thumbnail)
 
         view = MusicControlView(ctx)
         await ctx.send(embed=embed, view=view)
