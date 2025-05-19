@@ -18,12 +18,6 @@ A powerful and stylish Discord music bot built with Python, `discord.py`, and `y
 
 ---
 
-## 📸 Sample UI
-
-<img src="https://user-images.githubusercontent.com/your-screenshot.png" width="600">
-
----
-
 ## 📦 Requirements
 
 - Python 3.8 or higher
@@ -46,16 +40,17 @@ pip install -r requirements.txt
 ```
 Make sure ffmpeg is installed.
 
-    Windows: Download FFmpeg → Add ffmpeg/bin to PATH
+  Windows: Download FFmpeg → Add ffmpeg/bin to PATH
 
-    macOS: brew install ffmpeg
+  macOS: brew install ffmpeg
 
-    Linux: sudo apt install ffmpeg
+  Linux: sudo apt install ffmpeg
 
 ### 3. Set up environment variables
 
 Create a .env file in the project root:
 
+```
 DISCORD_TOKEN=your_discord_bot_token_here
-
-    Never share your token. Keep .env in .gitignore (already configured).
+```
+Never share your token. Keep .env in .gitignore (already configured).
