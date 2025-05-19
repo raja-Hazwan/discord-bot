@@ -20,7 +20,52 @@ intents.members = True
 music_queue = {}  # guild_id: list of (title, url)
 is_playing = {}   # guild_id: bool
 looping = {}  # guild_id: bool
+def format_duration(seconds):
+    minutes = seconds // 60
+    seconds = seconds % 60
+    return f"{minutes}:{str(seconds).zfill(2)}"
 
+
+
+class MusicControlView(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__(timeout=None)
+        self.ctx = ctx
+
+    @discord.ui.button(label="⏸ Pause", style=discord.ButtonStyle.red)
+    async def pause_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = self.ctx.voice_client
+        if vc and vc.is_playing():
+            vc.pause()
+            await interaction.response.send_message("⏸️ Paused.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Nothing is playing.", ephemeral=True)
+
+    @discord.ui.button(label="▶️ Resume", style=discord.ButtonStyle.green)
+    async def resume_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = self.ctx.voice_client
+        if vc and vc.is_paused():
+            vc.resume()
+            await interaction.response.send_message("▶️ Resumed.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Nothing is paused.", ephemeral=True)
+
+    @discord.ui.button(label="⏭ Skip", style=discord.ButtonStyle.blurple)
+    async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = self.ctx.voice_client
+        if vc and vc.is_playing():
+            vc.stop()
+            await interaction.response.send_message("⏭️ Skipped.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Nothing is playing.", ephemeral=True)
+
+    @discord.ui.button(label="🔁 Loop", style=discord.ButtonStyle.gray)
+    async def loop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild_id = self.ctx.guild.id
+        current = looping.get(guild_id, False)
+        looping[guild_id] = not current
+        status = "enabled" if looping[guild_id] else "disabled"
+        await interaction.response.send_message(f"🔁 Looping is now **{status}**.", ephemeral=True)
 
 
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -68,17 +113,15 @@ async def play(ctx, *, search: str):
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(search, download=False)
         if 'entries' in info:
-            info = info['entries'][0]
-        stream_url = info['url']
-        title = info.get('title', 'Unknown title')
+            info = info['entries'][0]  # from search result
 
-    # Add to queue
+    # Add full info object to queue
     if guild_id not in music_queue:
         music_queue[guild_id] = []
-    music_queue[guild_id].append((title, stream_url))
-    await ctx.send(f"🎶 Added to queue: **{title}**")
+    music_queue[guild_id].append(info)
 
-    # Start playing if not already
+    await ctx.send(f"🎶 Added to queue: **{info.get('title', 'Unknown')}**")
+
     if not is_playing.get(guild_id):
         await start_playback(ctx, voice_channel)
 
@@ -95,8 +138,25 @@ async def start_playback(ctx, channel):
             await vc.move_to(channel)
 
     while music_queue[guild_id]:
-        title, stream_url = music_queue[guild_id][0]  # don't pop yet
-        await ctx.send(f"🎧 Now playing: **{title}**")
+        info = music_queue[guild_id][0]  # full yt-dlp info object
+        title = info.get('title', 'Unknown')
+        stream_url = info.get('url')
+        duration_sec = info.get('duration', 0)
+        duration_str = format_duration(duration_sec)
+        thumbnail = info.get('thumbnail')
+
+        # Create embed
+        embed = discord.Embed(
+            title="🎧 Now Playing",
+            description=f"**{title}**",
+            color=discord.Color.blurple()
+        )
+        embed.add_field(name="Duration", value=duration_str, inline=True)
+        if thumbnail:
+            embed.set_thumbnail(url=thumbnail)
+
+        view = MusicControlView(ctx)
+        await ctx.send(embed=embed, view=view)
 
         done = asyncio.Event()
 
@@ -114,10 +174,13 @@ async def start_playback(ctx, channel):
         await done.wait()
 
         if not looping.get(guild_id, False):
-            music_queue[guild_id].pop(0)  # remove from queue if not looping
+            music_queue[guild_id].pop(0)
 
     is_playing[guild_id] = False
     await vc.disconnect()
+
+
+
 
 
 
