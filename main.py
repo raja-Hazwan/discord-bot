@@ -89,7 +89,7 @@ async def on_message(message):
 
 @bot.command()
 async def hallo(ctx):
-    await ctx.send(f'Whats up ma nigga, {ctx.author.name}!')
+    await ctx.send(f'Whats up ma man, {ctx.author.name}!')
 
 @bot.command()
 async def play(ctx, *, search: str):
